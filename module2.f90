@@ -53,6 +53,7 @@ module commn
   real(8) dv(iCellNumber1,iCellNumber2)
 
   real(8) x(2,iAssumptionPN,iCellNumber1,iCellNumber2)
+  real(8) buf_x(2,iAssumptionPN,iCellNumber1,iCellNumber2)
   real(8) x1(iCellNumber1)
   real(8) x2(iCellNumber2)
   real(8) zeta(3,iAssumptionPN,iCellNumber1,iCellNumber2)
@@ -106,11 +107,11 @@ module commn
   integer flux_outp2,flux_outm2
   integer flux_outp3,flux_outm3
 
-  ! !--- 物体の領域を設定 ---
-  ! real(8), parameter :: objx1_l = -0.5d0*L1
-  ! real(8), parameter :: objx1_r = 0.5d0*L1
-  ! real(8), parameter :: objx2_b = -0.5d0*L2
-  ! real(8), parameter :: objx2_u = 0.5d0*L2
+  !--- 物体の領域を設定 ---
+  real(8), parameter :: objx1_l = -0.5d0*L1
+  real(8), parameter :: objx1_r = 0.5d0*L1
+  real(8), parameter :: objx2_b = -0.5d0*L2
+  real(8), parameter :: objx2_u = 0.5d0*L2
 
   !--- 速度分布関数 ---
   integer nfun !サブルーチンを何回呼び出すかをカウント ---
@@ -120,6 +121,10 @@ module commn
   real(8) f1(-nzeta1:nzeta1,iCellNumber1,iCellNumber2)
   real(8) f2(-nzeta2:nzeta2,iCellNumber1,iCellNumber2)
   real(8) zmax1,zmax2
+
+  !-- 散乱体物体に流入流出する粒子の計算 --
+  integer iNumberBoundsIn(iCellNumber1)
+  integer iNumberBoundsOut(iCellNumber1)
 
   !---　ファイル名定義 ---
   character filepara*128
@@ -131,6 +136,7 @@ module commn
   character filedis2*128
   character filedata*128
   character filedataraw*128
+  character filebound*128
 
 end module commn
 
