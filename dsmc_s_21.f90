@@ -46,6 +46,8 @@
 ! 2016.7.11 割り算を掛け算に変更
 ! 2016.7.11 zmaxの出力するところを修正
 ! 2016.7.12 dis_funのdzetaを求める部分を変更（zmaxが大きくなりすぎていた場合の対処）
+! 2016.7.15 false sharingを考慮してcount_rfを消した
+! 2016.7.15 通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け
 !
 !---------------------------------------------------------------------------------------
 
@@ -75,6 +77,7 @@ program dsmc
        iCellNumber1,iCellNumber2
 
   open(10,file=filepara)
+  read(10,*) KnudsenPt
   read(10,*) iParallel
   read(10,*) iPattern
   read(10,*) porosity
@@ -195,13 +198,13 @@ program dsmc
               x(1,j,incx,incy) = -L1 + 2.0d0 * L1 * rf(iSeed,0)
               x(2,j,incx,incy) = -L2 + 2.0d0 * L2 * rf(iSeed,0)
               
-              count_rf(0) = count_rf(0) + 2
+              !count_rf(0) = count_rf(0) + 2
 
               !--- 速度分布を求める ---
               call makevv(1.0d0,dtemporary,zeta(1,j,incx,incy),0)
               call makevv(1.0d0,zeta(2,j,incx,incy),zeta(3,j,incx,incy),0)
 
-              count_rf(0) = count_rf(0) + 4
+              !count_rf(0) = count_rf(0) + 4
 
               !-- セル分割 --
                  !-- 領域を出た粒子は無視 --
@@ -285,7 +288,7 @@ program dsmc
         iBoundaryPNLeft = int( dBoundaryPNLeft ) 
      end if
 
-     count_rf(0) = count_rf(0) + 2
+     !count_rf(0) = count_rf(0) + 2
 
      !-- 領域に入ってくる粒子の数を数える --
      flux_inp = flux_inp + iBoundaryPNRight
@@ -363,14 +366,14 @@ program dsmc
            call makev(Rho0,zeta_boundary_left(1,jl),ip)
            call makevv(Rho0,zeta_boundary_left(2,jl),zeta_boundary_left(3,jl),ip)
 
-           count_rf(ip) = count_rf(ip) + 3
+           !count_rf(ip) = count_rf(ip) + 3
 
            !--- 境界から入ってきた粒子の位置，速度を求める ---
            dtsub = dt * rf(iSeed,ip)
            x_boundary_left(1,jl) = -L1 + zeta_boundary_left(1,jl) * dtsub
            x_boundary_left(2,jl) = -L2 + rf(iSeed,ip) * L2 * 2.0d0 + zeta_boundary_left(2,jl) * dtsub
 
-           count_rf(ip) = count_rf(ip) + 2
+           !count_rf(ip) = count_rf(ip) + 2
 
            !--- 上下の周期境界条件 ---
 600        continue
@@ -428,7 +431,7 @@ program dsmc
            call makev(1.0d0,zeta_boundary_right(1,jr),ip)
            call makevv(1.0d0,zeta_boundary_right(2,jr),zeta_boundary_right(3,jr),ip)
 
-           count_rf(ip) = count_rf(ip) + 3
+           !count_rf(ip) = count_rf(ip) + 3
 
            !--- 境界から入ってきた粒子の位置，速度を求める ---
            zeta_boundary_right(1,jr) = -zeta_boundary_right(1,jr)
@@ -436,7 +439,7 @@ program dsmc
            x_boundary_right(1,jr) = L1 + zeta_boundary_right(1,jr) * dtsub
            x_boundary_right(2,jr) = -L2 + rf(iSeed,ip) * L2 * 2.0d0 + zeta_boundary_right(2,jr) * dtsub
 
-           count_rf(ip) = count_rf(ip) + 2
+           !count_rf(ip) = count_rf(ip) + 2
 
            !--- 上下の周期境界条件 ---
 500        continue
@@ -528,28 +531,32 @@ program dsmc
      do incx=1,iCellNumber1
         do incy=1,iCellNumber2
 
-           !--- dtの間に衝突する粒子数の計算 ---
-           dcollisionCPN = dble(icellPN(incx,incy))*(1.0d0-exp(-dt/Knudsen(incx,incy)))
+           !--- 通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け ---
+           if(KnudsenPt == 0) then
 
-           !--- Knudsen=Knudsen2なら衝突しない ---
-           if(knudsen(incx,incy)==Knudsen2) dcollisionCPN = 0.0d0
+              !--- dtの間に衝突する粒子数の計算 ---
+              dcollisionCPN = dble(icellPN(incx,incy))*(1.0d0-exp(-dt/Knudsen(incx,incy)))
 
-           itemporary = dcollisionCPN - int(dcollisionCPN) 
-           !-- 衝突する粒子数 --
-           if(itemporary>rf(iSeed,ip)) then
-              icollisionCPN = int(dcollisionCPN) + 1
-           else
-              icollisionCPN = int(dcollisionCPN)
+              !--- Knudsen=Knudsen2なら衝突しない ---
+              if(knudsen(incx,incy)==Knudsen2) dcollisionCPN = 0.0d0
+
+              dtemporary = dcollisionCPN - dble(int(dcollisionCPN)) 
+              !-- 衝突する粒子数 --
+              if(dtemporary>rf(iSeed,ip)) then
+                 icollisionCPN = int(dcollisionCPN) + 1
+              else
+                 icollisionCPN = int(dcollisionCPN)
+              end if
+
+           else if(KnudsenPt == 1) then
+
+              if(knudsen(incx,incy)==Knudsen2) then
+                 icollisionCPN = 0
+              else
+                 icollisionCPN = icellPN(incx,incy)
+              end if
+
            end if
-
-           count_rf(ip) = count_rf(ip) + 1
-
-           ! !--- 衝突確率100%と0%専用のコード(2016.6.14) ---
-           ! if(knudsen(incx,incy)==Knudsen2) then
-           !    icollisionCPN = 0
-           ! else
-           !    icollisionCPN = icellPN(incx,incy)
-           ! end if
 
            !--- 1セルあたりicollisionCPN個の粒子が衝突する ---
 
@@ -561,25 +568,30 @@ program dsmc
                  !  よって，jがランダムにバラけるように乱数を用いて衝突する粒子を決める
                  !--------------------------------------------------------------------------- 
                
-300              continue
+                 !--- 通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け ---
+                 if(KnudsenPt == 0) then
 
-                 djrandom = (dble(icellPN(incx,incy))+1.0d0) * rf(iSeed,ip)
-                 
-                 jran = int(djrandom) + 1
-                 
-                 count_rf(ip) = count_rf(ip) + 2
+300                 continue
 
-                 if(jran==0 .or. jran==icellPN(incx,incy)+1) go to 300
+                    djrandom = (dble(icellPN(incx,incy))+1.0d0) * rf(iSeed,ip)
 
-                 !--- 多孔質媒体と衝突後の速度を求める ---
-                 
-                 ! call makevv(TauObject0,zeta(1,j,incx,incy),dtemporary,ip)
-                 ! call makevv(TauObject0,zeta(2,j,incx,incy),zeta(3,j,incx,incy),ip)
+                    jran = int(djrandom) + 1
 
-                 call makevv(TauObject0,zeta(1,jran,incx,incy),dtemporary,ip)
-                 call makevv(TauObject0,zeta(2,jran,incx,incy),zeta(3,jran,incx,incy),ip)
+                    !count_rf(ip) = count_rf(ip) + 2
+
+                    if(jran==0 .or. jran==icellPN(incx,incy)+1) go to 300
+
+                    call makevv(TauObject0,zeta(1,jran,incx,incy),dtemporary,ip)
+                    call makevv(TauObject0,zeta(2,jran,incx,incy),zeta(3,jran,incx,incy),ip)
+
+                 else if(KnudsenPt == 1) then
+
+                    call makevv(TauObject0,zeta(1,j,incx,incy),dtemporary,ip)
+                    call makevv(TauObject0,zeta(2,j,incx,incy),zeta(3,j,incx,incy),ip)
+
+                 end if
                 
-                 count_rf(ip) = count_rf(ip) + 4
+                 !count_rf(ip) = count_rf(ip) + 4
 
               end do
            end if !icollisionCPN
@@ -674,13 +686,13 @@ program dsmc
      end if
 
      !---乱数の発生回数の計算---
-     !並列 3
-     do ip=0,iParallel
-        if(count_rf(ip)>1000000000) then
-           count_rf(ip) = 0
-           count_rff(ip) = count_rff(ip) + 1
-        end if
-     end do
+     ! !並列 3
+     ! do ip=0,iParallel
+     !    if(count_rf(ip)>1000000000) then
+     !       count_rf(ip) = 0
+     !       count_rff(ip) = count_rff(ip) + 1
+     !    end if
+     ! end do
 
      !--- 定常判定されてから100000ステップ経過後に計算終了 ---
      if(irep==j_ste+200000) exit
@@ -725,10 +737,10 @@ program dsmc
   write(15,*) "dzeta1=",dzeta1,"dzeta2=",dzeta2 !速度の刻み幅出力
   write(15,*) "zmax1=",dzeta1*dble(nzeta1),"zmax2=",dzeta2*dble(nzeta2) !速度の最大値出力
     !並列 4 最後
-  do ip=0,iParallel
-    write(15,*) "count_rf",ip,count_rff(ip),count_rf(ip)
-  end do
-  close(15)
+  ! do ip=0,iParallel
+  !   write(15,*) "count_rf",ip,count_rff(ip),count_rf(ip)
+  ! end do
+  ! close(15)
   
   !--- データの出力 ---
   write(filedataraw,'("DataRaw(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
