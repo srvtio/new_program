@@ -108,7 +108,17 @@ program dsmc
 
   ! close(10)
 
-  Knudsen(:,:) = Knudsen1
+  !Knudsen(:,:) = Knudsen1
+
+  do incy=1,iCellNumber2 
+     do incx=1,iCellNumber1
+        if(incy<=iCellNumber2/4 .or. incy>iCellNumber2/4*3) then
+           Knudsen(incx,incy) = Knudsen2
+        else
+           Knudsen(incx,incy) = Knudsen1
+        end if
+     end do
+  end do
 
   write(fileknu,'("KnudsenConf(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
        Rho1,Tau1,iPattern
@@ -163,8 +173,8 @@ program dsmc
   icellPN (:,:) = 0
   icellPN_sub(:,:,:) = 0
 
-  iNumberBoundsIn(:) = 0
-  iNumberBoundsOut(:) = 0
+  iNumberBoundsIn1(:) = 0
+  iNumberBoundsOut1(:) = 0
   
   !--- 各セルの体積 ---
   dv(:,:) = dx1*dx2*L3
@@ -301,10 +311,12 @@ program dsmc
      flux_inp = flux_inp + iBoundaryPNRight
      flux_inm = flux_inm + iBoundaryPNLeft
 
-     !$omp parallel private(j,ip,itemporary,iincx,iincy,icollisionCPN,jran,dtsub,dcollisionCPN,djrandom) &
+     !$omp parallel private(j,ip,iincx,iincy,icollisionCPN,jran,dtsub,dcollisionCPN,djrandom) &
+     !$omp private(itemporary,dtemporary,dtemporary2,boundx) &
      !$omp num_threads(iParallel+1)
      !$ ip = omp_get_thread_num()
-     !$omp do reduction(+:flux_outp1,flux_outm1) collapse(2)
+     !$omp do reduction(+:flux_outp1,flux_outm1) &
+     !$omp reduction(+:iNumberBoundsIn1,iNumberBoundsOut1,iNumberBoundsIn2,iNumberBoundsOut2) collapse(2)
      do incx = 1,iCellNumber1
         do incy = 1,iCellNumber2
            if(icellPN(incx,incy)>0) then
@@ -319,14 +331,15 @@ program dsmc
                  x(2,j,incx,incy) = x(2,j,incx,incy) + dt * zeta(2,j,incx,incy)
 
                  !--- 散乱体への流入流出粒子の計算 ------------------------------------------
-                 ! incy=8とincy=9の間にある境界における粒子の流入流出を調べる 
+                 ! incy=iCellNumber2/4とincy=iCellNumber2/4+1の間にある
+                 ! 境界における粒子の流入流出を調べる 
                  ! dtemporaryは粒子がその境界を通過したかを判断するためのもの（負なら通過）
                  ! boundxはobjx2_bを通過した点のx座標
                  !-------------------------------------------------------------------------
 
                  if( irep>j_ste .or. irep>iFinalStep ) then
 
-                    if(incy==8 .or. incy==9) then
+                    if(incy==iCellNumber2/4 .or. incy==iCellNumber2/4+1) then
 
                        dtemporary = (objx2_b-x(2,j,incx,incy)) * (objx2_b-buf_x(2,j,incx,incy))
 
@@ -343,9 +356,9 @@ program dsmc
                              end if
 
                              if(x(2,j,incx,incy)>objx2_b) then
-                                iNumberBoundsIn(iincx) = iNumberBoundsIn(iincx) + 1
+                                iNumberBoundsIn1(iincx) = iNumberBoundsIn1(iincx) + 1
                              else
-                                iNumberBoundsOut(iincx) = iNumberBoundsOut(iincx) + 1
+                                iNumberBoundsOut1(iincx) = iNumberBoundsOut1(iincx) + 1
                              end if
                           end if
 
@@ -418,8 +431,48 @@ program dsmc
 
            !--- 境界から入ってきた粒子の位置，速度を求める ---
            dtsub = dt * rf(iSeed,ip)
+           dtemporary2 = -L2 + rf(iSeed,ip) * L2 * 2.0d0
            x_boundary_left(1,jl) = -L1 + zeta_boundary_left(1,jl) * dtsub
-           x_boundary_left(2,jl) = -L2 + rf(iSeed,ip) * L2 * 2.0d0 + zeta_boundary_left(2,jl) * dtsub
+           x_boundary_left(2,jl) = dtemporary2 + zeta_boundary_left(2,jl) * dtsub
+
+           ! !--- 散乱体への流入流出粒子の計算 ------------------------------------------
+           ! ! incy=iCellNumber2/4とincy=iCellNumber2/4+1の間にある
+           ! ! 境界における粒子の流入流出を調べる 
+           ! ! dtemporaryは粒子がその境界を通過したかを判断するためのもの（負なら通過）
+           ! ! boundxはobjx2_bを通過した点のx座標
+           ! !-------------------------------------------------------------------------
+           
+           ! if( irep>j_ste .or. irep>iFinalStep ) then
+
+           !    if(incy==iCellNumber2/4 .or. incy==iCellNumber2/4+1) then
+
+           !       dtemporary = (objx2_b-x(2,j,incx,incy)) * (objx2_b-dtemporary2)
+
+           !       if(dtemporary < 0.0d0) then
+           !          boundx = x(1,j,incx,incy) &
+           !               + (x(1,j,incx,incy)-buf_x(1,j,incx,incy)) / (x(2,j,incx,incy)-buf_x(2,j,incx,incy)) &
+           !               * (objx2_b-buf_x(2,j,incx,incy))
+
+           !          if(boundx<=L1 .and. boundx>=-L1) then
+           !             if(boundx==L1) then
+           !                iincx = iCellNumber1
+           !             else
+           !                iincx = int((boundx+L1)/dx1) + 1   
+           !             end if
+
+           !             if(x(2,j,incx,incy)>objx2_b) then
+           !                iNumberBoundsIn1(iincx) = iNumberBoundsIn1(iincx) + 1
+           !             else
+           !                iNumberBoundsOut1(iincx) = iNumberBoundsOut1(iincx) + 1
+           !             end if
+           !          end if
+
+           !       end if
+
+           !    end if
+
+           ! end if
+
 
            !count_rf(ip) = count_rf(ip) + 2
 
@@ -803,7 +856,7 @@ program dsmc
        Rho1,Tau1,iPattern
   open(15,file=filebound)
   do incx=1,iCellNumber1
-     write(15,'((f8.4),2(i12))') x1(incx),iNumberBoundsIn(incx),iNumberBoundsOut(incx)
+     write(15,'((f8.4),2(i12))') x1(incx),iNumberBoundsIn1(incx),iNumberBoundsOut1(incx)
   end do
   close(15)
   
