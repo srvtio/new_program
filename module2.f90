@@ -7,9 +7,9 @@ module commn
   integer, parameter :: iAssumptionPN = 3*iParticleNumber/iCellNumber1/iCellNumber2
   integer, parameter :: iSeed = 1
   integer, parameter :: iSampleStep = 100
-  integer, parameter :: iTotalStep = 1000000
-  integer, parameter :: iFinalStep = 800000
-  integer, parameter :: iInitialStep = 500000
+  integer, parameter :: iTotalStep = 10000
+  integer, parameter :: iFinalStep = 8000
+  integer, parameter :: iInitialStep = 5000
  
   real(8), parameter :: L1 = 1.0d0
   real(8), parameter :: L2 = 1.0d0
@@ -33,6 +33,7 @@ module commn
 
   real(8) delta
   real(8) porosity
+  integer KnudsenPt !通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け
   integer iPattern  !多孔質配置パターン
   integer iParallel !並列数 
 
