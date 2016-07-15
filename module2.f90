@@ -14,14 +14,14 @@ module commn
   real(8), parameter :: L1 = 1.0d0
   real(8), parameter :: L2 = 1.0d0
   real(8), parameter :: L3 = 2.0d0
-  real(8), parameter :: Knudsen1 = 1.0d0
+  real(8), parameter :: Knudsen1 = 0.0d0
   real(8), parameter :: Knudsen2 = 100.0d0
   real(8), parameter :: Tau1 = 1.0d0                !temperature of wall1
   real(8), parameter :: TauObject0 = 1.0d0          !temperature of porous left
   real(8), parameter :: TauObject1 = 1.0d0          !temperature of porous right
   real(8), parameter :: RhoInitial = 1.0d0
   real(8), parameter :: Rho0 = 0.0d0
-  real(8), parameter :: Rho1 = 1.0d0
+  real(8), parameter :: Rho1 = 0.0d0
 
   real(8), parameter :: dx1 = 2*L1/dble(iCellNumber1)
   real(8), parameter :: dx2 = 2*L2/dble(iCellNumber2)
@@ -30,6 +30,7 @@ module commn
   
   integer itemporary !一時的に用いる変数（整数）
   real(8) dtemporary !一時的に用いる変数（実数）
+  real(8) dtemporary2 !一時的に用いる変数（実数）
 
   real(8) delta
   real(8) porosity
@@ -123,8 +124,10 @@ module commn
   real(8) zmax1,zmax2
 
   !-- 散乱体物体に流入流出する粒子の計算 --
-  integer iNumberBoundsIn(iCellNumber1)
-  integer iNumberBoundsOut(iCellNumber1)
+  integer iNumberBoundsIn1(iCellNumber1)
+  integer iNumberBoundsOut1(iCellNumber1)
+  integer iNumberBoundsIn2(iCellNumber1)
+  integer iNumberBoundsOut2(iCellNumber1)
 
   !---　ファイル名定義 ---
   character filepara*128
