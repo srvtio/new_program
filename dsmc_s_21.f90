@@ -16,14 +16,14 @@
 ! ・Macroscopic(Rho1,Tau1,iPattern).dat：巨視量を求めるための素データ
 !       Rho1:右側の完全凝縮境界条件における密度
 !       Tau1:右側の完全凝縮境界条件における温度
-!
-!iPattern:領域内に置いた物体のパターン（どんな多孔質体なのか，どんな温度分布を与えた物体なのかなど）
+!       iPattern:領域内に置いた物体のパターン（どんな多孔質体なのか，どんな温度分布を与えた物体なのかなど）
 ! ・DistributionFunc1(Rho1,Tau1,iPattern).dat：1方向の速度分布関数
 ! ・DistributionFunc2(Rho1,Tau1,iPattern).dat：2方向の速度分布関数
 ! ・Flux(Rho1,Tau1,iPattern).dat：左右の境界から流入流出する粒子の個数をカウント
 ! ・KnudsenConf(Rho1,Tau1,iPattern).dat：座標とKnudsen数のデータ
 ! ・Data(Rho1,Tau1,iPattern).dat：初期で設定したパラメータや，計算によって得られる条件データ等
 ! ・DataRaw(Rho1,Tau1,iPattern).dat：計算によって得られる条件データ
+! ・BoundsNumber(Rho1,Tau1,iPattern).dat 散乱体物体に流入流出する粒子の数を数える
 !
 !--- 変更履歴 --------------------------------------------------------------------------
 !
@@ -48,6 +48,7 @@
 ! 2016.7.12 dis_funのdzetaを求める部分を変更（zmaxが大きくなりすぎていた場合の対処）
 ! 2016.7.15 false sharingを考慮してcount_rfを消した
 ! 2016.7.15 通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け
+! 2016.7.15 指定した領域における流入流出粒子の数を数えるコードの追加
 !
 !---------------------------------------------------------------------------------------
 
@@ -64,6 +65,9 @@ program dsmc
   integer iBoundaryPNLeft,iBoundaryPNRight !左右境界から流入する粒子数
   integer np_max_re
   real(8) djrandom
+
+  !-- 散乱体物体に流入流出する粒子の計算 --
+  real(8) boundx
 
   real(8), parameter :: Redx1 = 1.0d0 / dx1
   real(8), parameter :: Redx2 = 1.0d0 / dx2
@@ -158,6 +162,9 @@ program dsmc
 
   icellPN (:,:) = 0
   icellPN_sub(:,:,:) = 0
+
+  iNumberBoundsIn(:) = 0
+  iNumberBoundsOut(:) = 0
   
   !--- 各セルの体積 ---
   dv(:,:) = dx1*dx2*L3
@@ -303,9 +310,50 @@ program dsmc
            if(icellPN(incx,incy)>0) then
               do j=1,icellPN(incx,incy)
 
+                 !-- 散乱体物体への流入流出する粒子の計算用 --
+                 buf_x(1,j,incx,incy) = x(1,j,incx,incy)
+                 buf_x(2,j,incx,incy) = x(2,j,incx,incy)
+
                  !-- 粒子の移流 --
                  x(1,j,incx,incy) = x(1,j,incx,incy) + dt * zeta(1,j,incx,incy)
                  x(2,j,incx,incy) = x(2,j,incx,incy) + dt * zeta(2,j,incx,incy)
+
+                 !--- 散乱体への流入流出粒子の計算 ------------------------------------------
+                 ! incy=8とincy=9の間にある境界における粒子の流入流出を調べる 
+                 ! dtemporaryは粒子がその境界を通過したかを判断するためのもの（負なら通過）
+                 ! boundxはobjx2_bを通過した点のx座標
+                 !-------------------------------------------------------------------------
+
+                 if( irep>j_ste .or. irep>iFinalStep ) then
+
+                    if(incy==8 .or. incy==9) then
+
+                       dtemporary = (objx2_b-x(2,j,incx,incy)) * (objx2_b-buf_x(2,j,incx,incy))
+
+                       if(dtemporary < 0.0d0) then
+                          boundx = x(1,j,incx,incy) &
+                               + (x(1,j,incx,incy)-buf_x(1,j,incx,incy)) / (x(2,j,incx,incy)-buf_x(2,j,incx,incy)) &
+                               * (objx2_b-buf_x(2,j,incx,incy))
+
+                          if(boundx<=L1 .and. boundx>=-L1) then
+                             if(boundx==L1) then
+                                iincx = iCellNumber1
+                             else
+                                iincx = int((boundx+L1)/dx1) + 1   
+                             end if
+
+                             if(x(2,j,incx,incy)>objx2_b) then
+                                iNumberBoundsIn(iincx) = iNumberBoundsIn(iincx) + 1
+                             else
+                                iNumberBoundsOut(iincx) = iNumberBoundsOut(iincx) + 1
+                             end if
+                          end if
+
+                       end if
+
+                    end if
+
+                 end if
 
                  !-- 上下の周期境界条件 --
 400              continue
@@ -559,7 +607,6 @@ program dsmc
            end if
 
            !--- 1セルあたりicollisionCPN個の粒子が衝突する ---
-
            if(icollisionCPN>0) then
               do j=1,icollisionCPN
                  !--------------------------------------------------------------------------- 
@@ -749,6 +796,15 @@ program dsmc
   write(15,*) delta
   write(15,*) dzeta1
   write(15,*) dzeta2 !速度の刻み幅出力
+  close(15)
+
+  !--- 散乱体物体における流入流出粒子数の計算 ---
+  write(filebound,'("BoundsNumber(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+       Rho1,Tau1,iPattern
+  open(15,file=filebound)
+  do incx=1,iCellNumber1
+     write(15,'((f8.4),2(i12))') x1(incx),iNumberBoundsIn(incx),iNumberBoundsOut(incx)
+  end do
   close(15)
   
   write(*,*) "program finish"
