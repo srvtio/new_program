@@ -49,6 +49,7 @@
 ! 2016.7.15 false sharingを考慮してcount_rfを消した
 ! 2016.7.15 通常のKnudsenのパターン(0)と，衝突確率0%があるパターン(1)の場合分け
 ! 2016.7.15 指定した領域における流入流出粒子の数を数えるコードの追加
+! 2016.7.27 出力ファイルのiPatternを4桁に変更
 !
 !---------------------------------------------------------------------------
 
@@ -58,7 +59,7 @@
 program dsmc
   use commn
   use crf
-  use srf
+  !use srf
   implicit none
   integer :: incx,incy,iincx,iincy,j,ip,jran,jp,jr,jl
   real(8) dBoundaryPNLeft,dBoundaryPNRight
@@ -82,54 +83,52 @@ program dsmc
        iCellNumber1,iCellNumber2
 
   open(10,file=filepara)
-  read(10,*) KnudsenPt
+  read(10,*) KnudsenPt !通常...0, 衝突無し...1
   read(10,*) iParallel
   read(10,*) iPattern
   read(10,*) porosity
   close(10)
-
-  !write(*,*) iParallel
 
   allocate (icellPN_sub(iCellNumber1,iCellNumber2,0:iParallel))
   allocate (xx(2,iAssumptionPN,iCellNumber1,iCellNumber2,0:iParallel))
   allocate (zzeta(3,iAssumptionPN,iCellNumber1,iCellNumber2,0:iParallel))
 
   !--- Knudsen数を各セルに振り分ける ---
-  ! write(fileinidata,'("KnudsenData(CN1_",i2,",CN2_",i2,",pt",i3,").dat")') &
-  !      iCellNumber1,iCellNumber2,iPattern
+  write(fileinidata,'("KnudsenData(CN1_",i2,",CN2_",i2,",pt",i4,").dat")') &
+       iCellNumber1,iCellNumber2,iPattern
 
-  ! open(10,file=fileinidata) 
-
-  ! do incy=1,iCellNumber2 
-  !    do incx=1,iCellNumber1
-  !       read(10,*) iincx,iincy,Knudsen(incx,incy)
-  !    end do
-  !    read(10,*)
-  ! end do
-
-  ! close(10)
-
-  !Knudsen(:,:) = Knudsen1
+  open(10,file=fileinidata) 
 
   do incy=1,iCellNumber2 
      do incx=1,iCellNumber1
-        if(incy<=iCellNumber2/4 .or. incy>iCellNumber2/4*3) then
-           Knudsen(incx,incy) = Knudsen2
-        else
-           Knudsen(incx,incy) = Knudsen1
-        end if
+        read(10,*) iincx,iincy,Knudsen(incx,incy)
      end do
+     read(10,*)
   end do
 
-  write(fileknu,'("KnudsenConf(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  close(10)
+
+  !Knudsen(:,:) = Knudsen1
+
+  ! do incy=1,iCellNumber2 
+  !    do incx=1,iCellNumber1
+  !       if(incy<=iCellNumber2/4 .or. incy>iCellNumber2/4*3) then
+  !          Knudsen(incx,incy) = Knudsen2
+  !       else
+  !          Knudsen(incx,incy) = Knudsen1
+  !       end if
+  !    end do
+  ! end do
+
+  write(fileknu,'("KnudsenConf(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(fileflu,'("Flux(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(fileflu,'("Flux(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filemac,'("Macroscopic(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filemac,'("Macroscopic(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filedis1,'("DistributionFunc1(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedis1,'("DistributionFunc1(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filedis2,'("DistributionFunc2(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedis2,'("DistributionFunc2(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
 
   open(18,file=fileknu)
@@ -338,36 +337,36 @@ program dsmc
                  ! boundxはobjx2_bを通過した点のx座標
                  !-------------------------------------------------------------------------
 
-                 if( irep>j_ste .or. irep>iFinalStep ) then
+                 ! if( irep>j_ste .or. irep>iFinalStep ) then
 
-                    if(incy==iCellNumber2/4 .or. incy==iCellNumber2/4+1) then
+                 !    if(incy==iCellNumber2/4 .or. incy==iCellNumber2/4+1) then
 
-                       dtemporary = (objx2_b-x(2,j,incx,incy)) * (objx2_b-buf_x(2,j,incx,incy))
+                 !       dtemporary = (objx2_b-x(2,j,incx,incy)) * (objx2_b-buf_x(2,j,incx,incy))
 
-                       if(dtemporary < 0.0d0) then
-                          boundx = x(1,j,incx,incy) &
-                               + (x(1,j,incx,incy)-buf_x(1,j,incx,incy)) / (x(2,j,incx,incy)-buf_x(2,j,incx,incy)) &
-                               * (objx2_b-buf_x(2,j,incx,incy))
+                 !       if(dtemporary < 0.0d0) then
+                 !          boundx = x(1,j,incx,incy) &
+                 !               + (x(1,j,incx,incy)-buf_x(1,j,incx,incy)) / (x(2,j,incx,incy)-buf_x(2,j,incx,incy)) &
+                 !               * (objx2_b-buf_x(2,j,incx,incy))
 
-                          if(boundx<=L1 .and. boundx>=-L1) then
-                             if(boundx==L1) then
-                                iincx = iCellNumber1
-                             else
-                                iincx = int((boundx+L1)/dx1) + 1   
-                             end if
+                 !          if(boundx<=L1 .and. boundx>=-L1) then
+                 !             if(boundx==L1) then
+                 !                iincx = iCellNumber1
+                 !             else
+                 !                iincx = int((boundx+L1)/dx1) + 1   
+                 !             end if
 
-                             if(x(2,j,incx,incy)>objx2_b) then
-                                iNumberBoundsIn1(iincx) = iNumberBoundsIn1(iincx) + 1
-                             else
-                                iNumberBoundsOut1(iincx) = iNumberBoundsOut1(iincx) + 1
-                             end if
-                          end if
+                 !             if(x(2,j,incx,incy)>objx2_b) then
+                 !                iNumberBoundsIn1(iincx) = iNumberBoundsIn1(iincx) + 1
+                 !             else
+                 !                iNumberBoundsOut1(iincx) = iNumberBoundsOut1(iincx) + 1
+                 !             end if
+                 !          end if
 
-                       end if
+                 !       end if
 
-                    end if
+                 !    end if
 
-                 end if
+                 ! end if
 
                  !-- 上下の周期境界条件 --
 400              continue
@@ -824,10 +823,10 @@ program dsmc
 
   !----- 全ての粒子の位置，速度，乱数の種を保存 -----
 
-  write(*,*) ma(1,1)
+  !write(*,*) ma(1,1)
   
   !--- データの出力 ---
-  write(filedata,'("Data(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedata,'("Data(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
   open(15,file=filedata)
   write(15,*) "Rho1=",Rho1
@@ -850,7 +849,7 @@ program dsmc
   ! close(15)
   
   !--- データの出力 ---
-  write(filedataraw,'("DataRaw(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedataraw,'("DataRaw(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
   open(15,file=filedataraw)
   write(15,*) delta
@@ -859,7 +858,7 @@ program dsmc
   close(15)
 
   !--- 散乱体物体における流入流出粒子数の計算 ---
-  write(filebound,'("BoundsNumber(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filebound,'("BoundsNumber(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
   open(15,file=filebound)
   do incx=1,iCellNumber1
@@ -875,12 +874,12 @@ contains
   !------------------------------------------------------------------
 
   real(8) function rf(iidum,ip)
-    use srf
+    !use srf
     implicit none
 
     integer, intent(in) :: iidum,ip
     integer idum
-    !integer, save       :: ma(55,0:31),inext(0:31),inextp(0:31),iff(0:31)=0
+    integer, save       :: ma(55,0:31),inext(0:31),inextp(0:31),iff(0:31)=0
     integer, parameter  :: mbig=1000000000,mseed=161803398,mz=0
     real(8), parameter  :: fac=1.d-9
     integer             :: mj,mk,i,ii,k
