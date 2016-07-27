@@ -35,6 +35,7 @@
 ! 2016.7.15 test3用に読み込むKnudsenを書き換え
 ! 2016.7.15 速度のデータ出力(test3用)
 ! 2016.7.15 物体下面の流入流出粒子数の計算
+! 2016.7.27 出力ファイルのiPatternを4桁に変更
 !------------------------------------------------------------------------------------------
 
 program calc
@@ -95,24 +96,24 @@ program calc
   open(20,file=filepara)
   read(20,'(i3)') KnudsenPt
   read(20,'(i3)') iParallel
-  read(20,'(i3)') iPattern
+  read(20,'(i4)') iPattern
   read(20,'(f8.4)') porosity
   close(20)
 
-  write(fileinidata,'("KnudsenData(CN1_",i2,",CN2_",i2,",pt",i3,").dat")') &
+  write(fileinidata,'("KnudsenData(CN1_",i2,",CN2_",i2,",pt",i4,").dat")') &
        iCellNumber1,iCellNumber2,iPattern
-  write(fileflu,'("Flux(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(fileflu,'("Flux(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filemac,'("Macroscopic(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filemac,'("Macroscopic(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filedis1,'("DistributionFunc1(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedis1,'("DistributionFunc1(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filedis2,'("DistributionFunc2(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedis2,'("DistributionFunc2(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filedataraw,'("DataRaw(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
+  write(filedataraw,'("DataRaw(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
        Rho1,Tau1,iPattern
-  write(filebound,'("BoundsNumber(Rho1_",f4.2,",Tau1_",f4.2,",pt",i3,").dat")') &
-       Rho1,Tau1,iPattern
+  ! write(filebound,'("BoundsNumber(Rho1_",f4.2,",Tau1_",f4.2,",pt",i4,").dat")') &
+  !      Rho1,Tau1,iPattern
 
   open(50,file=fileflu)
   open(70,file=filemac,access="stream",form="unformatted")
@@ -126,31 +127,31 @@ program calc
   open(60,file='StationaryPN.dat')
 
  !--- 物体のパターン，圧力勾配，空隙率に関するデータ
-  write(filename,'("PorousData(pt",i3,",dpdx_",f4.2,",poro_",f4.2").dat")') &
+  write(filename,'("PorousData(pt",i4,",dpdx_",f4.2,",poro_",f4.2").dat")') &
        iPattern,grad_p,porosity
   open(40,file=filename,status='replace')
 
   por_area = 0.0d0
 
-  ! open(20,file=fileinidata)
-  ! do incy=1,iCellNumber2 
-  !    do incx=1,iCellNumber1
-  !       read(20,*) iincx,iincy,Knudsen(incx,incy)
-  !    end do
-  !    read(20,*)
-  ! end do
-  ! close(20)
-  ! Knudsen(:,:) = Knudsen1
-
+  open(20,file=fileinidata)
   do incy=1,iCellNumber2 
      do incx=1,iCellNumber1
-        if(incy<=iCellNumber2/4 .or. incy>iCellNumber2/4*3) then
-           Knudsen(incx,incy) = Knudsen2
-        else
-           Knudsen(incx,incy) = Knudsen1
-        end if
+        read(20,*) iincx,iincy,Knudsen(incx,incy)
      end do
+     read(20,*)
   end do
+  close(20)
+  ! Knudsen(:,:) = Knudsen1
+
+  ! do incy=1,iCellNumber2 
+  !    do incx=1,iCellNumber1
+  !       if(incy<=iCellNumber2/4 .or. incy>iCellNumber2/4*3) then
+  !          Knudsen(incx,incy) = Knudsen2
+  !       else
+  !          Knudsen(incx,incy) = Knudsen1
+  !       end if
+  !    end do
+  ! end do
 
   open(20,file=filedataraw)
   read(20,*) delta
@@ -159,37 +160,38 @@ program calc
   close(20)
 
   !--- 散乱体物体への流入流出粒子数 ---
-  iNBIn_ts0 = 0
-  iNBOut_ts0 = 0 
-  iNBIn_ts1 = 0 
-  iNBOut_ts1 = 0
-  open(90,file=filebound)
-  do incx=1,iCellNumber1
-     read(90,'((f8.4),2(i12))') x1(incx),iNumberBoundsIn(incx),iNumberBoundsOut(incx)
-     if(incx<9 .or. incx>24) then
-        iNBIn_ts0  = iNBIn_ts0  + iNumberBoundsIn(incx)
-        iNBOut_ts0 = iNBOut_ts0 + iNumberBoundsOut(incx)
-     else
-        iNBIn_ts1  = iNBIn_ts1  + iNumberBoundsIn(incx)
-        iNBOut_ts1 = iNBOut_ts1 + iNumberBoundsOut(incx)
-     end if
-  end do
-  write(40,*) "iNBIn_ts0=" ,iNBIn_ts0*delta/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*) "iNBOut_ts0=",iNBOut_ts0*delta/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*) "iNBIn_ts0-iNBOut_ts0=",(iNBIn_ts0*delta-iNBOut_ts0*delta)/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*) "iNBIn_ts1=" ,iNBIn_ts1*delta/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*) "iNBOut_ts1=",iNBOut_ts1*delta/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*) "iNBIn_ts1-iNBOut_ts1=",(iNBIn_ts1*delta-iNBOut_ts1*delta)/(iTotalStep - iFinalStep)/dt/2.0d0
-  write(40,*)
-  close(90)
+  ! iNBIn_ts0 = 0
+  ! iNBOut_ts0 = 0 
+  ! iNBIn_ts1 = 0 
+  ! iNBOut_ts1 = 0
+  ! open(90,file=filebound)
+  ! do incx=1,iCellNumber1
+  !    read(90,'((f8.4),2(i12))') x1(incx),iNumberBoundsIn1(incx),iNumberBoundsOut1(incx)
+  !    if(incx<9 .or. incx>24) then
+  !       iNBIn_ts0  = iNBIn_ts0  + iNumberBoundsIn1(incx)
+  !       iNBOut_ts0 = iNBOut_ts0 + iNumberBoundsOut1(incx)
+  !    else
+  !       iNBIn_ts1  = iNBIn_ts1  + iNumberBoundsIn1(incx)
+  !       iNBOut_ts1 = iNBOut_ts1 + iNumberBoundsOut1(incx)
+  !    end if
+  ! end do
+  ! write(40,*) "iNBIn_ts0=" ,iNBIn_ts0*delta/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*) "iNBOut_ts0=",iNBOut_ts0*delta/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*) "iNBIn_ts0-iNBOut_ts0=",(iNBIn_ts0*delta-iNBOut_ts0*delta)/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*) "iNBIn_ts1=" ,iNBIn_ts1*delta/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*) "iNBOut_ts1=",iNBOut_ts1*delta/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*) "iNBIn_ts1-iNBOut_ts1=",(iNBIn_ts1*delta-iNBOut_ts1*delta)/(iTotalStep - iFinalStep)/dt/2.0d0
+  ! write(40,*)
+  ! close(90)
 
   !--- 多孔質の表面積を計算 ---
   do incy=1,iCellNumber2
      do incx=1,iCellNumber1
         if(incx<iCellNumber1 .and. Knudsen(incx,incy)/=Knudsen(incx+1,incy)) por_area = por_area + dx2
         if(incy<iCellNumber2 .and. Knudsen(incx,incy)/=Knudsen(incx,incy+1)) por_area = por_area + dx1
-        if(incx==1   .and. Knudsen(incx,incy)/=Knudsen(iCellNumber1,incy)  ) por_area = por_area + dx2
-        if(incy==1   .and. Knudsen(incx,incy)/=Knudsen(incx,iCellNumber2)  ) por_area = por_area + dx1
+        if(incx==1              .and. Knudsen(incx,incy)==Knudsen1) por_area = por_area + dx2
+        if(incx==iCellNumber1   .and. Knudsen(incx,incy)==Knudsen1) por_area = por_area + dx2
+        if(incy==1              .and. Knudsen(incx,incy)/=Knudsen(incx,iCellNumber2)) por_area = por_area + dx1
      end do
   end do
 
