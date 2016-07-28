@@ -1,15 +1,20 @@
 /*--- 最新版 2016.7.28 ---*/
-// import java.io.File ;
-// import java.io.FileWriter ;
-// import java.io.BufferedWriter ;
-// import java.io.PrintWriter ;
-// import java.io.IOException ;
+/*
+(--- 読み取りファイル ---)
+無し
+
+(--- 出力ファイル ---)
+Parameter().dat ... メイン計算に必要なパラメータを記述したファイル
+KnudsenData().dat ... 多孔質の配置を決めるファイル
+porous_conf.gp ... gnuplotで多孔質の配置図を確認するためのファイル
+
+*/
 import java.io.*;
 
 public class RandomObj {
 
     public static void main(String[] args) {
-	int incx,incy;
+	int incx,incy ;
 	int iCellNumber1 = 32 ;
 	int iCellNumber2 = 32 ;
 	int iTotalCell   = iCellNumber1 * iCellNumber2 ;
