@@ -1,5 +1,7 @@
 /*--- 最新版 2016.7.28 ---*/
 /*
+多孔質物体をランダムに配置させるプログラム
+/*
 (--- 読み取りファイル ---)
 無し
 
@@ -23,12 +25,14 @@ public class RandomObj {
 	int Number       = 0 ;
 	int KnudsenPt    = 1 ;
 	int iParallel    = 7 ;
-	int iPattern     = 1011660 ;
 	double porosity      = 0.0 ;
 	double Knudsen1      = 0.0 ;
 	double Knudsen2      = 100.0 ;
 	double dtemp         = 0.0 ;
-	double FinalPorosity = 0.50 ;
+	double FinalPorosity = 0.53 ;
+	int iPattern     = 1011600 + (int)(FinalPorosity*100.0) ;
+
+	System.out.println(iPattern) ;
 
 	int NumberCell[][] = new int[iCellNumber1][iCellNumber2] ;
 	double Knudsen[][] = new double[iCellNumber1][iCellNumber2] ;
@@ -78,40 +82,11 @@ public class RandomObj {
 
 	System.out.println(porosity) ;
 
-	// /*--- ファイルの読み取り ---*/
-	// double a[] = new double[1000] ;
-	// int i = 0 ;
-	// try{
-	//     File file = new File("Parameter(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+").dat") ;
-	//     FileReader fr = new FileReader(file) ; 
-	//     StreamTokenizer st = new StreamTokenizer(fr) ; 
-
-	//     // nextToken()で次の行を読み取る
-	//     st.nextToken() ;
-	//     KnudsenPt = (int)st.nval ;
-	//     st.nextToken() ;
-	//     iParallel = (int)st.nval ;
-	//     st.nextToken() ;
-	//     iPattern = (int)st.nval ;
-	//     st.nextToken() ;
-	//     porosity = st.nval ;
-
-	//     fr.close() ;
-
-	// }catch(Exception e){
-	//     System.out.println(e) ;
-	// }
-
-	// System.out.println(KnudsenPt) ; 
-	// System.out.println(iParallel) ; 
-	// System.out.println(iPattern) ; 
-	// System.out.println(porosity) ; 
-
 	/*--- ファイルへの書き込み ---*/
 	try{
 	    File file1 = new File("Parameter(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+").dat") ;
 	    File file2
-		= new File("KnudsenData(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+",pt"+iPattern+").dat") ;
+		= new File("KnudsenData(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+",pt "+iPattern+").dat") ;
 	    File file3 = new File("porous_conf.gp") ;
 
 	    PrintWriter pw1 = new PrintWriter(new BufferedWriter(new FileWriter(file1))) ;
@@ -146,7 +121,7 @@ public class RandomObj {
 	    pw3.printf("set yrange [0:31] %n") ;
 	    pw3.printf("set xlabel 'x1' %n") ;
 	    pw3.printf("set ylabel 'x2' %n") ;
-	    pw3.printf("splot 'KnudsenData(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+",pt"+iPattern+").dat'u 1:2:3  palette notitle %n") ;
+	    pw3.printf("splot 'KnudsenData(CN1_"+iCellNumber1+",CN2_"+iCellNumber2+",pt "+iPattern+").dat'u 1:2:3  palette notitle %n") ;
 	    pw3.printf("unset output %n") ;
 	    pw3.printf("reset %n") ;
 
